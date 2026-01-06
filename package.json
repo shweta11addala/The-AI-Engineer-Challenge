@@ -1,9 +1,0 @@
-{
-  "name": "the-ai-engineer-challenge",
-  "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "build": "cd frontend && npm run build"
-  }
-}
-
