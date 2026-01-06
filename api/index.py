@@ -43,11 +43,13 @@ def chat(request: ChatRequest):
     
     try:
         user_message = request.message
-        logger.info(f"🚀 Calling OpenAI API with model: gpt-5.2")
+        # Try gpt-3.5-turbo first (more likely to work on free tier)
+        # If you have access to GPT-5.2, you can change this back
+        model_name = "gpt-3.5-turbo"
+        logger.info(f"🚀 Calling OpenAI API with model: {model_name}")
         
-        # Using GPT-5.2 - OpenAI's latest model with enhanced capabilities
         response = client.chat.completions.create(
-            model="gpt-5.2",
+            model=model_name,
             messages=[
                 {"role": "system", "content": "You are a supportive mental coach."},
                 {"role": "user", "content": user_message}
