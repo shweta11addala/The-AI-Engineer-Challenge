@@ -28,11 +28,23 @@ def root():
 
 @app.post("/api/chat")
 def chat(request: ChatRequest):
-    if not os.getenv("OPENAI_API_KEY"):
+    import logging
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"📥 Received chat request: {request.message[:50]}...")
+    
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        logger.error("❌ OPENAI_API_KEY not configured")
         raise HTTPException(status_code=500, detail="OPENAI_API_KEY not configured")
+    
+    logger.info(f"✅ API key found (length: {len(api_key)}, starts with: {api_key[:7]}...)")
     
     try:
         user_message = request.message
+        logger.info(f"🚀 Calling OpenAI API with model: gpt-5.2")
+        
         # Using GPT-5.2 - OpenAI's latest model with enhanced capabilities
         response = client.chat.completions.create(
             model="gpt-5.2",
@@ -41,7 +53,10 @@ def chat(request: ChatRequest):
                 {"role": "user", "content": user_message}
             ]
         )
-        return {"reply": response.choices[0].message.content}
+        
+        reply = response.choices[0].message.content
+        logger.info(f"✅ OpenAI API call successful! Response length: {len(reply)}")
+        return {"reply": reply}
     except Exception as e:
         error_str = str(e)
         # Check for specific OpenAI error types
