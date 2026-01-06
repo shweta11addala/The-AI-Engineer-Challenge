@@ -33,9 +33,9 @@ def chat(request: ChatRequest):
     
     try:
         user_message = request.message
-        # Changed from gpt-5 (doesn't exist) to gpt-3.5-turbo (reliable and cost-effective)
+        # Using GPT-5.2 - OpenAI's latest model with enhanced capabilities
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-5.2",
             messages=[
                 {"role": "system", "content": "You are a supportive mental coach."},
                 {"role": "user", "content": user_message}
