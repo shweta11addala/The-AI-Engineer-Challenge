@@ -63,6 +63,10 @@ def chat(request: ChatRequest):
         else:
             raise HTTPException(status_code=500, detail=f"Error calling OpenAI API: {error_str}")
 
-# Vercel serverless function handler
-from mangum import Mangum
-handler = Mangum(app)
+# Vercel serverless function handler (only needed for Vercel deployment)
+try:
+    from mangum import Mangum
+    handler = Mangum(app)
+except ImportError:
+    # mangum not needed for local development
+    handler = None
