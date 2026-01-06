@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from openai import OpenAI
@@ -33,8 +33,9 @@ def chat(request: ChatRequest):
     
     try:
         user_message = request.message
+        # Changed from gpt-5 (doesn't exist) to gpt-3.5-turbo (reliable and cost-effective)
         response = client.chat.completions.create(
-            model="gpt-5",
+            model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a supportive mental coach."},
                 {"role": "user", "content": user_message}
@@ -61,3 +62,7 @@ def chat(request: ChatRequest):
             )
         else:
             raise HTTPException(status_code=500, detail=f"Error calling OpenAI API: {error_str}")
+
+# Vercel serverless function handler
+from mangum import Mangum
+handler = Mangum(app)
