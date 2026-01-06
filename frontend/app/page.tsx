@@ -60,9 +60,20 @@ export default function Home() {
           ? err.message
           : 'Failed to get response. Please try again.';
       setError(errorMessage);
+      
+      // Create a more user-friendly error message
+      let userFriendlyError = errorMessage;
+      if (errorMessage.includes('quota') || errorMessage.includes('billing')) {
+        userFriendlyError = `I'm unable to respond right now due to an API quota issue. ${errorMessage}`;
+      } else if (errorMessage.includes('API key')) {
+        userFriendlyError = `Configuration issue: ${errorMessage}`;
+      } else {
+        userFriendlyError = `Sorry, I encountered an error: ${errorMessage}. Please try again.`;
+      }
+      
       const errorMsg: Message = {
         role: 'assistant',
-        content: `Sorry, I encountered an error: ${errorMessage}. Please try again.`,
+        content: userFriendlyError,
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMsg]);

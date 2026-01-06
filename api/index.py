@@ -42,4 +42,22 @@ def chat(request: ChatRequest):
         )
         return {"reply": response.choices[0].message.content}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error calling OpenAI API: {str(e)}")
+        error_str = str(e)
+        # Check for specific OpenAI error types
+        if "insufficient_quota" in error_str or "quota" in error_str.lower():
+            raise HTTPException(
+                status_code=500, 
+                detail="OpenAI API quota exceeded. Please check your OpenAI account billing and usage limits. You may need to add payment information or upgrade your plan."
+            )
+        elif "401" in error_str or "unauthorized" in error_str.lower() or "Invalid API key" in error_str:
+            raise HTTPException(
+                status_code=500,
+                detail="Invalid OpenAI API key. Please check your API key configuration."
+            )
+        elif "429" in error_str or "rate limit" in error_str.lower():
+            raise HTTPException(
+                status_code=500,
+                detail="OpenAI API rate limit exceeded. Please wait a moment and try again."
+            )
+        else:
+            raise HTTPException(status_code=500, detail=f"Error calling OpenAI API: {error_str}")
