@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from openai import OpenAI
@@ -80,10 +80,7 @@ def chat(request: ChatRequest):
         else:
             raise HTTPException(status_code=500, detail=f"Error calling OpenAI API: {error_str}")
 
-# Vercel serverless function handler (only needed for Vercel deployment)
-try:
-    from mangum import Mangum
-    handler = Mangum(app)
-except ImportError:
-    # mangum not needed for local development
-    handler = None
+# Vercel serverless function handler
+# Must be at module level for Vercel to detect it
+from mangum import Mangum
+handler = Mangum(app)
