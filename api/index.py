@@ -83,11 +83,4 @@ def chat(request: ChatRequest):
 # Vercel serverless function handler
 # Must be at module level for Vercel to detect it
 from mangum import Mangum
-
-# Create the handler instance
-mangum_handler = Mangum(app, lifespan="off")
-
-# Export as handler for Vercel
-def handler(event, context):
-    """Vercel serverless function handler"""
-    return mangum_handler(event, context)
+handler = Mangum(app, lifespan="off")
