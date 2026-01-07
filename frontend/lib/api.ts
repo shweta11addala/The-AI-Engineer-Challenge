@@ -3,16 +3,24 @@
  */
 
 // Use relative path when deployed on Vercel (same domain)
-// Use localhost for local development
+// Use localhost:8000 for local development
 const getApiBaseUrl = () => {
+  // If explicitly set via environment variable, use that
   if (process.env.NEXT_PUBLIC_API_URL) {
     return process.env.NEXT_PUBLIC_API_URL;
   }
-  // In browser (client-side), use relative path for same-domain API
-  // In server-side, use localhost
+  
+  // For local development, always use localhost:8000
+  // (both client-side and server-side)
   if (typeof window !== 'undefined') {
-    return ''; // Relative path - will use same domain
+    // In browser - check if we're on localhost (local dev)
+    // If so, use localhost:8000, otherwise use relative path (for Vercel)
+    const isLocalhost = window.location.hostname === 'localhost' || 
+                       window.location.hostname === '127.0.0.1';
+    return isLocalhost ? 'http://localhost:8000' : '';
   }
+  
+  // Server-side rendering - use localhost:8000 for local dev
   return 'http://localhost:8000';
 };
 
