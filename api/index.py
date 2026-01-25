@@ -5,6 +5,11 @@ from openai import OpenAI
 import os
 from dotenv import load_dotenv
 
+# aimakerspace library is available for future RAG/vector retrieval features
+# Available classes: TextFileLoader, VectorDatabase, EmbeddingModel, ChatOpenAI
+# Example usage:
+#   from aimakerspace import TextFileLoader, VectorDatabase, EmbeddingModel, ChatOpenAI
+
 load_dotenv()
 
 app = FastAPI()
