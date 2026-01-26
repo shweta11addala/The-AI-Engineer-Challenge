@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
+# --- CRITICAL: 'app' must be defined globally here, NOT inside a function ---
 app = FastAPI()
 
 app.add_middleware(
@@ -27,11 +28,8 @@ app.add_middleware(
 # ==========================================
 
 def load_data():
-    """
-    Reads text from the specific data files requested.
-    """
-    # 1. Define the files we want to read
-    # Note: specific relative path logic to find 'data' from 'api' folder
+    """Reads text from the specific data files requested."""
+    # Logic to find the 'data' folder relative to 'api'
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     files = [
         os.path.join(base_dir, "data", "HealthWellnessGuide.txt"),
@@ -39,29 +37,26 @@ def load_data():
     ]
     
     combined_text = ""
-    
     for file_path in files:
         if os.path.exists(file_path):
             try:
                 with open(file_path, "r", encoding="utf-8") as f:
                     content = f.read()
                     combined_text += content + "\n\n"
-                    logger.info(f"✅ Loaded file: {file_path} ({len(content)} chars)")
+                    logger.info(f"✅ Loaded file: {file_path}")
             except Exception as e:
                 logger.error(f"❌ Error reading {file_path}: {e}")
         else:
             logger.warning(f"⚠️ File not found: {file_path}")
             
     if not combined_text:
-        logger.warning("⚠️ No data loaded! RAG will be empty.")
-        return "No source data found. Please add data/HealthWellnessGuide.txt."
-        
+        return "No source data found."
     return combined_text
 
-# Load the data immediately into memory
+# Load data immediately
 SOURCE_TEXT = load_data()
 
-# Global storage for our Vector Index (In-Memory)
+# Global storage for Index
 VECTOR_INDEX = []
 CHUNKS = []
 
@@ -69,68 +64,39 @@ class ChatRequest(BaseModel):
     message: str
 
 # ==========================================
-#  HELPER FUNCTIONS (Tasks 2-5)
+#  RAG FUNCTIONS
 # ==========================================
 
 def get_embedding(text, client):
-    """Task 3: Generate Embedding using OpenAI"""
     text = text.replace("\n", " ")
-    # Using a smaller model is faster/cheaper, but verify your account has access
     return client.embeddings.create(input=[text], model="text-embedding-3-small").data[0].embedding
 
 def cosine_similarity(a, b):
-    """Task 5: Cosine Similarity Math"""
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
 def build_index(client):
-    """Tasks 2 & 4: Chunking and Indexing"""
     global VECTOR_INDEX, CHUNKS
-    
-    # Check if already indexed (Warm Start Optimization)
-    if CHUNKS and len(CHUNKS) > 0: 
-        logger.info("⚡ Using cached vector index")
-        return
+    if CHUNKS: return # Already built
 
     logger.info("🔨 Building Vector Index...")
-    
-    # TASK 2: Chunking 
-    # Simple split by periods. For better results with blogs, 
-    # you might want to split by paragraphs ("\n\n") first.
+    # Simple chunking by period
     raw_chunks = [c.strip() for c in SOURCE_TEXT.replace('\n', ' ').split('.') if len(c.strip()) > 20]
     
-    temp_index = []
-    temp_chunks = []
-
-    # Limit chunks to avoid timeouts on free tier if files are huge
-    # Remove [:100] if you have a paid plan and want full indexing
+    # Limit to 200 chunks to prevent timeouts
     for chunk in raw_chunks[:200]: 
         try:
             vector = get_embedding(chunk, client)
-            temp_index.append(vector)
-            temp_chunks.append(chunk)
-        except Exception as e:
-            logger.error(f"Error embedding chunk: {e}")
-
-    VECTOR_INDEX = temp_index
-    CHUNKS = temp_chunks
-    
+            VECTOR_INDEX.append(vector)
+            CHUNKS.append(chunk)
+        except Exception:
+            pass
     logger.info(f"✅ Indexed {len(CHUNKS)} chunks.")
 
 def retrieve(query, client, top_k=3):
-    """Task 5: Retrieval"""
-    if not VECTOR_INDEX:
-        return ["No index available."]
-
+    if not VECTOR_INDEX: return []
     query_vector = get_embedding(query, client)
-    
-    scores = []
-    for i, chunk_vector in enumerate(VECTOR_INDEX):
-        score = cosine_similarity(query_vector, chunk_vector)
-        scores.append((score, CHUNKS[i]))
-    
+    scores = [(cosine_similarity(query_vector, vec), chunk) for vec, chunk in zip(VECTOR_INDEX, CHUNKS)]
     scores.sort(key=lambda x: x[0], reverse=True)
-    
-    # Return top K text chunks
     return [item[1] for item in scores[:top_k]]
 
 # ==========================================
@@ -139,7 +105,7 @@ def retrieve(query, client, top_k=3):
 
 @app.get("/")
 def root():
-    return {"status": "ok", "rag_enabled": True, "data_source": "Health & Blogs"}
+    return {"status": "ok", "rag_enabled": True}
 
 @app.post("/api/chat")
 def chat(request: ChatRequest):
@@ -150,21 +116,14 @@ def chat(request: ChatRequest):
     try:
         client = OpenAI(api_key=api_key)
         
-        # Build index if empty
+        # Build index on first request
         if not CHUNKS:
             build_index(client)
 
-        logger.info(f"🔍 Retrieving context for: {request.message}")
         retrieved_context = retrieve(request.message, client)
         context_str = "\n".join(retrieved_context)
         
-        system_prompt = f"""
-        You are a helpful assistant. Use the following context to answer the user's question.
-        If the answer is not in the context, say you don't know.
-        
-        Context:
-        {context_str}
-        """
+        system_prompt = f"Use this context to answer:\n{context_str}"
 
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
@@ -173,11 +132,7 @@ def chat(request: ChatRequest):
                 {"role": "user", "content": request.message}
             ]
         )
-        
-        return {
-            "reply": response.choices[0].message.content,
-            "context_used": retrieved_context 
-        }
+        return {"reply": response.choices[0].message.content}
 
     except Exception as e:
         logger.error(f"Error: {str(e)}")
