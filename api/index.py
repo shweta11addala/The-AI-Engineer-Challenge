@@ -54,13 +54,3 @@ def chat(request: ChatRequest):
     except Exception as e:
         logger.error(f"Error calling OpenAI: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-
-# Vercel serverless function handler
-def handler(event, context):
-    """
-    Vercel serverless function handler.
-    Wraps Mangum adapter to handle ASGI requests.
-    """
-    from mangum import Mangum
-    mangum_app = Mangum(app, lifespan="off")
-    return mangum_app(event, context)
